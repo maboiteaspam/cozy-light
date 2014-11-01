@@ -241,7 +241,7 @@ var serverHelpers = {
     async.eachSeries(Object.keys(loadedPlugins), runPlugin, function (err) {
       if(err) { LOGGER.error(err); }
 
-      app.all('/', controllers.index);
+      app.all('/status', controllers.status);
 
       app.all('/apps/:name/*', controllers.proxyPrivate);
       app.all('/apps/:name*', controllers.proxyPrivate);
@@ -375,112 +375,44 @@ var serverHelpers = {
 // Express app controllers
 
 var controllers = {
-  
+
   /*
-   * Render front page and list available applications.
+   * Render status of running cozy-light.
    */
-  index: function (req, res, next) {
+  status: function (req, res, next) {
 
     var config = require(CONFIG_PATH);
+
+    var status = {
+      memoryUsage:'',
+      apps:[],
+      plugins:[]
+    };
+
     var memoryUsage = process.memoryUsage();
-    memoryUsage = Math.ceil(memoryUsage.heapUsed / 1000000);
+    status.memoryUsage = Math.ceil(memoryUsage.heapUsed / 1000000);
 
-    var template = ' \
-    <html> \
-    <head> \
-        <meta http-equiv="content-type" content="text/html; charset=utf-8"> \
-        <title>Cozy Light: Your Personal Cloud at Home</title> \
-        <style type="text/css" media="screen"> \
-          @font-face { \
-            font-family: mavenpro; \
-            src: url(maven-pro-light-200.otf); \
-          } \
- \
-          @font-face { \
-            font-family: signika; \
-            src: url(soure-sans-pro.ttf); \
-          } \
- \
-          body { \
-            font-family: mavenpro; \
-            padding: 20px; \
-          } \
- \
-          h1 { \
-            margin-top: 0; \
-            font-weight: normal; \
-            font-size: 36px; \
-          } \
-          h2 { \
-            font-weight: normal; \
-            margin-top: 60px; \
-          } \
- \
-          .logo { \
-            float: left;  \
-            margin-right: 20px; \
-          } \
- \
-          .app-line { \
-            text-transform: uppercase; \
-            font-size: 16px; \
-          } \
- \
-          a { \
-            font-weight: bold; \
-            Text-decoration: none; \
-            color: black; \
-          } \
-          a:hover { \
-            color: orange; \
-          } \
-          a:visited { \
-            color: black; \
-          } \
- \
-          } \
-          .app-line span { \
-            font-family: signika \
-            text-transform: normal; \
-            font-size: 14px; \
-          } \
-        </style> \
-    </head> \
-    <body> \
-    <a href="http://cozy.io" target="_blank"> \
-    <img class="logo" src="happycloud.png" /> \
-    </a>  \
-    <h1>Cozy Light</h1> \
-    <h2>Your applications</h2> \
-    ';
-
-    if (Object.keys(config.apps).length > 0) {
-      Object.keys(config.apps).forEach(function (key) {
-        var app = config.apps[key];
-        var name = app.name;
-        template += '<p class="app-line"><a href="apps/' + 
-                    name + '/" target="_blank">' 
-        template += app.displayName + '</a><span>&nbsp;(' + 
-                    app.version + ')</span></p>'
+    Object.keys(config.apps).forEach(function (key) {
+      var app = config.apps[key];
+      status.apps.push({
+        name:app.name,
+        version:app.version
       });
-    } else {
-      template += '<em>no application installed.</em>'
-    }
-
-    Object.keys(loadedPlugins).forEach(function (pluginName) {
-      if (plugin.getTemplate !== undefined) {
-        template += plugin.getTemplate(config);
-      };
     });
 
-    template += '<h2>Resources</h2><p>Occupied memory:&nbsp;' + 
-                memoryUsage +  'MB</p>'
-
-    template += ' \
-    </body> \
-    </html> \
-      ';
-    res.send(template);
+    Object.keys(loadedPlugins).forEach(function (pluginName) {
+      var plugin = loadedPlugins[pluginName];
+      var template = '';
+      if (plugin.getTemplate !== undefined) {
+        template = plugin.getTemplate(config);
+      }
+      status.plugins.push({
+        name:pluginName,
+        version:plugin.version,
+        template:template
+      });
+    });
+    res.send(status);
   },
 
   /*

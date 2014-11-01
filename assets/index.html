@@ -1,0 +1,133 @@
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>Cozy Light: Your Personal Cloud at Home</title>
+    <style type="text/css" media="screen">
+        @font-face {
+            font-family: mavenpro;
+            src: url(maven-pro-light-200.otf);
+        }
+        @font-face {
+            font-family: signika;
+            src: url(soure-sans-pro.ttf);
+        }
+        body {
+            font-family: mavenpro;
+            padding: 20px;
+        }
+        h1 {
+
+            margin-top: 0;
+            font-weight: normal;
+            font-size: 36px;
+        }
+        h2 {
+            font-weight: normal;
+            margin-top: 60px;
+        }
+        .logo {
+            float: left;
+            margin-right: 20px;
+        }
+        .app-line {
+            text-transform: uppercase;
+            font-size: 16px;
+        }
+        a {
+            font-weight: bold;
+            Text-decoration: none;
+            color: black;
+        }
+        a:hover {
+            color: orange;
+        }
+        a:visited {
+            color: black;
+        }
+        .app-line span {
+            font-family: signika;
+            text-transform: normal;
+            font-size: 14px;
+        }
+        .plugin_template,
+        .app_template{
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<a href="http://cozy.io" target="_blank">
+    <img class="logo" src="happycloud.png" />
+</a>
+<h1>Cozy Light</h1>
+<h2>Your applications</h2>
+
+
+<p class="app_template app-line">
+    <a href="/apps/:name/" target="_blank">:app.displayName</a>
+    &nbsp;
+    <span>(:app.version)</span>
+</p>
+<div class="apps"></div>
+<em class="no_apps">no application installed.</em>
+
+
+<div class="plugin_template">
+    <span>:plugin.displayName (:app.version)</span>
+    <div>:plugin.template</div>
+</div>
+<div class="plugins"></div>
+<em class="no_plugins"></em>
+
+
+<h2>Resources</h2>
+<p>
+    Occupied memory:
+    &nbsp;
+    <span class="memoryUsage"></span>MB
+</p>
+
+<script src="jquery-2.1.1.min.js"></script>
+<script>
+    $.get('/status',function(d){
+        if(d.apps.length){
+            $(".apps *").remove();
+            $(".no_apps").hide();
+            var app_template = $('.app_template');
+            $(d.apps).each(function(k,app){
+                var app_view = app_template.clone();
+                app_view.find('a')
+                        .attr('href','/apps/'+app.name+'/')
+                        .text(app.name);
+                app_view.find('span')
+                        .text('('+app.version+')');
+                app_view.removeClass("app_template");
+                app_view.appendTo(".apps");
+            });
+            $(".apps").show();
+        }else{
+            $(".apps").hide();
+            $(".no_apps").show();
+        }
+        if(d.plugins.length){
+            $(".plugins *").remove();
+            $(".no_plugins").hide();
+            var plugin_template = $('.template_plugin').clone();
+            $(d.plugins).each(function(k,plugin){
+                var plugin_view = plugin_template.clone();
+                plugin_view.find('span').text(plugin.name+' ('+plugin.version+')');
+                plugin_view.find('div').html(plugin.template || "");
+                plugin_view.removeClass("template_plugin");
+                plugin_view.appendTo(".plugins");
+            });
+            $(".plugins").show();
+        }else{
+            $(".plugins").hide();
+            $(".no_plugins").show();
+        }
+        $(".memoryUsage").text(d.memoryUsage);
+    });
+</script>
+
+</body>
+</html>
