@@ -11,6 +11,7 @@ var npm = require('npm');
 var request = require('request-json-light');
 var express = require('express');
 var morgan = require('morgan');
+var bodyParser = require('body-parser')
 var async = require('async');
 var printit = require('printit');
 var Pouchdb = require('pouchdb');
@@ -241,7 +242,9 @@ var serverHelpers = {
     async.eachSeries(Object.keys(loadedPlugins), runPlugin, function (err) {
       if(err) { LOGGER.error(err); }
 
+      app.use(bodyParser.urlencoded({ extended: false }))
       app.all('/status', controllers.status);
+      app.post('/install', controllers.install);
 
       app.all('/apps/:name/*', controllers.proxyPrivate);
       app.all('/apps/:name*', controllers.proxyPrivate);
@@ -413,6 +416,53 @@ var controllers = {
       });
     });
     res.send(status);
+  },
+
+
+  /*
+   * Install app in running cozy-light instance.
+   */
+  install: function (req, res, next) {
+    var app = req.body.app;
+    var confirmed = parseInt(req.body.confirmed) || false;
+    if( app ){
+      var branch = 'master';
+      if( app.match(/#([a-z_-]+)/) ){
+        branch = app.match(/#([a-z_-]+)/)[1]
+      }
+      var pckg_url = 'https://raw.githubusercontent.com/'+app+'/'+branch+'/package.json';
+
+      if( !confirmed ){
+        https.get(pckg_url, function(res2) {
+          res2.setEncoding('utf8');
+          var body = '';
+          res2.on('data', function (chunk) {
+            body += chunk;
+          });
+          res2.on('end', function () {
+            var pckg = {};
+            try{
+              pckg = JSON.parse(body);
+              res.send({
+                name:pckg.name,
+                version:pckg.version
+              });
+            }catch(re){
+              console.log(body)
+              res.send("package.json incorrect");
+            }
+          });
+        }).on('error', function(e) {
+          res.send("package.json file not found");
+        });
+      }else{
+        actions.installApp(app,function(){
+          res.send("installed");
+        });
+      }
+    }else{
+      res.send(404);
+    }
   },
 
   /*

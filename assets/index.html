@@ -53,9 +53,107 @@
         .app_template{
             display: none;
         }
+
+        .installer{
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 0%;
+            height: 0%;
+            background-color: rgb(189, 197, 197,0);
+            opacity: 0;
+            z-index: -1;
+            transition-property: all;
+            transition-duration: 0.5s;
+        }
+        .installer.loading,
+        .installer.confirm,
+        .installer.success,
+        .installer.failure{
+            opacity: 1;
+            z-index: 5;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .installer.loading .waiter{
+            top: 50%;
+            left: 50%;
+            margin-top: -10px;
+            margin-left: -10px;
+            width: 20px;
+            height: 20px;
+        }
+        .installer.confirm .confirm{
+            top: 50%;
+            left: 50%;
+            width: 250px;
+            height: 120px;
+            margin-top: -125px;
+            margin-left: -60px;
+        }
+        .installer.success .success{
+            top: 50%;
+            left: 50%;
+            width: 250px;
+            height: 120px;
+            margin-top: -125px;
+            margin-left: -60px;
+        }
+        .installer.failure .failure{
+            top: 50%;
+            left: 50%;
+            width: 250px;
+            height: 120px;
+            margin-top: -125px;
+            margin-left: -60px;
+        }
+        .installer .waiter{
+            position: fixed;
+            top: -50px;
+            left: -50px;
+            width: 0;
+            height: 0;
+            overflow: hidden;
+        }
+        .installer .confirm{
+            position: fixed;
+            overflow: hidden;
+            top: 100%;
+            left: 100%;
+            width: 0;
+            height: 0;
+        }
+        .installer .success{
+            position: fixed;
+            overflow: hidden;
+            top: 100%;
+            left: 100%;
+            width: 0;
+            height: 0;
+        }
+        .installer .failure{
+            position: fixed;
+            overflow: hidden;
+            top: 100%;
+            left: 100%;
+            width: 0;
+            height: 0;
+        }
+        .installer .bg{
+            background-color: rgb(189, 197, 197);
+            opacity: 0.5;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
     </style>
 </head>
 <body>
+
+
 <a href="http://cozy.io" target="_blank">
     <img class="logo" src="happycloud.png" />
 </a>
@@ -87,14 +185,40 @@
     <span class="memoryUsage"></span>MB
 </p>
 
+
+<div class="installer">
+    <div class="bg"></div>
+    <div class="waiter">0</div>
+    <div class="confirm">
+        Please confirm installation
+        <span class="name"></span>
+        <span class="version"></span>
+        <button class="bt-confirm">Confirm</button>
+        <button class="bt-cancel">Cancel</button>
+    </div>
+    <div class="success">
+        Installation success !
+        <span class="name"></span>
+        <span class="version"></span>
+        <button class="bt-ok">Ok</button>
+    </div>
+    <div class="failure">
+        Installation failed !
+        <span class="name"></span>
+        <span class="version"></span>
+        <button class="bt-ok">Ok</button>
+    </div>
+</div>
+
+
 <script src="jquery-2.1.1.min.js"></script>
 <script>
-    $.get('/status',function(d){
-        if(d.apps.length){
+    $(document).on("status_loaded",function(ev,status){
+        if(status.apps.length){
             $(".apps *").remove();
             $(".no_apps").hide();
             var app_template = $('.app_template');
-            $(d.apps).each(function(k,app){
+            $(status.apps).each(function(k,app){
                 var app_view = app_template.clone();
                 app_view.find('a')
                         .attr('href','/apps/'+app.name+'/')
@@ -109,11 +233,11 @@
             $(".apps").hide();
             $(".no_apps").show();
         }
-        if(d.plugins.length){
+        if(status.plugins.length){
             $(".plugins *").remove();
             $(".no_plugins").hide();
             var plugin_template = $('.template_plugin').clone();
-            $(d.plugins).each(function(k,plugin){
+            $(status.plugins).each(function(k,plugin){
                 var plugin_view = plugin_template.clone();
                 plugin_view.find('span').text(plugin.name+' ('+plugin.version+')');
                 plugin_view.find('div').html(plugin.template || "");
@@ -125,8 +249,90 @@
             $(".plugins").hide();
             $(".no_plugins").show();
         }
-        $(".memoryUsage").text(d.memoryUsage);
+        $(".memoryUsage").text(status.memoryUsage);
     });
+    $.get('/status',function(d){
+        $(document).trigger("status_loaded",d);
+    });
+
+    var install_app = function(app,confirmed,then){
+        $.post('/install',{app:app,confirmed:confirmed?1:0},function(install){
+            if(then) then(install);
+        });
+    };
+    var load = function () {
+        var s = [
+            '|',
+            '||',
+            '|||',
+            '&nbsp;||',
+            '&nbsp;&nbsp;|',
+        ];
+        $(".installer .waiter").html(s[0]);
+        return setInterval(function(){
+            var r = $(".installer .waiter").html();
+            var i = s.indexOf(r);
+            if(i+1< s.length) i++;
+            else i = 0;
+            $(".installer .waiter").html(s[i]);
+        },150);
+    };
+    if( !!location.hash.match(/^#install/) ){
+        var app = location.hash.substr(9);
+        var confirmed = false;
+        $(".installer").addClass("loading");
+        var interval = load();
+        install_app(app,confirmed,function(install){
+            if( install == "need download" ){
+
+            }else if( install == "package.json file not found" ){
+
+            }else if( install == "package.json incorrect" ){
+
+            }else{
+                $(".installer .confirm .bt-cancel").one("click",function(){
+                    $(".installer")
+                            .removeClass("confirm");
+                    clearInterval(interval)
+                });
+                $(".installer .confirm .bt-confirm").one("click",function(){
+                    confirmed = true;
+                    $(".installer")
+                            .removeClass("confirm")
+                            .addClass("loading");
+                    install_app(app,confirmed,function(install){
+                        if( install == "installed" ){
+                            $(".installer")
+                                    .removeClass("loading")
+                                    .addClass("success");
+                            setTimeout(function(){
+                                $.get('/status',function(d){
+                                    $(document).trigger("status_loaded",d);
+                                });
+                            },1500);
+                        }else{
+                            $(".installer")
+                                    .removeClass("loading")
+                                    .addClass("failure");
+                        }
+                        $(".installer .success .bt-ok,.installer .failure .bt-ok").one("click",function(){
+                            $(".installer")
+                                    .removeClass("loading")
+                                    .removeClass("failure")
+                                    .removeClass("success");
+                            clearInterval(interval)
+                        });
+                    });
+                });
+                $(".installer .name").text(install.name);
+                $(".installer .version").text(install.version);
+                $(".installer")
+                        .addClass("confirm")
+                        .removeClass("loading");
+
+            }
+        });
+    }
 </script>
 
 </body>
