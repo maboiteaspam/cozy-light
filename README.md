@@ -250,7 +250,7 @@ a private/caching npm repository server.
 
 If your app runs also as a standalone, you may have interest to use cozy-stub
 
-add it  dependency of your app.
+add it as dependency of your app.
 
     npm i cozy-stub --save
 
