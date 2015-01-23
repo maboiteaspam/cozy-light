@@ -243,17 +243,17 @@ Before you push your PR
 
 Tips
 
-To improve speed of repetitive testing we recommend to use rlidwka/sinopia,
+To improve speed of repetitive testing we recommend to use sinopia,
 a private/caching npm repository server.
 
-    npm install -g sinopia
-    sinopia &
-    npm set registry http://localhost:4873/
+    cozy-light install cozy-sinopia
 
-To reset the default parameters
-    
-    npm config set registry https://registry.npmjs.org/
-    killall sinopia
+If your app runs also as a standalone, you may have interest to use cozy-stub
+
+add it  dependency of your app.
+
+    npm i cozy-stub --save
+
 
 
 # FAQ
