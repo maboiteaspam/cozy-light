@@ -58,7 +58,7 @@
   },
   "scripts": {
     "test": "sh scripts/run-tests.sh",
-    "appveyor": "cmd scripts\\run-tests.bat",
+    "appveyor": "scripts\\run-tests.bat",
     "lint": "eslint lib/* test/*.js",
     "start": "bin/cozy-light start"
   },
