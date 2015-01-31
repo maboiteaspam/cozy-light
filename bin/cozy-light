@@ -37,43 +37,62 @@ var runProgram = function() {
   program
     .command('install <app>')
     .description('Add app to current Cozy Light')
-    .action(actions.installApp);
+    .action(function(app){
+      actions.installApp(app, cozyLight.exit)
+    });
 
   program
     .command('uninstall <app>')
     .description('Remove app from current Cozy Light')
-    .action(actions.uninstallApp);
+    .action(function(app){
+      actions.uninstallApp(app, cozyLight.exit);
+    });
 
   program
     .command('add-plugin <plugin>')
     .description('Add plugin to current Cozy Light')
-    .action(actions.installPlugin);
+    .action(function(plugin){
+      actions.installPlugin(plugin, program, cozyLight.exit);
+    });
 
   program
     .command('remove-plugin <plugin>')
     .description('Remove plugin from current Cozy Light')
-    .action(actions.uninstallPlugin);
+    .action(function(plugin){
+      actions.uninstallPlugin(plugin, cozyLight.exit);
+    });
 
   program
     .command('display-config')
     .description('Display current config of Cozy Light')
-    .action(actions.displayConfig);
+    .action(function(){
+      actions.displayConfig(program);
+      cozyLight.exit();
+    });
 
   program
     .command('enable <apporplugin>')
     .description('Enable given disabled app or plugin')
-    .action(actions.enable);
+    .action(function(){
+      actions.enable(program);
+      cozyLight.exit();
+    });
 
   program
     .command('disable <apporplugin>')
     .description('Disable given app or plugin')
-    .action(actions.disable);
+    .action(function(){
+      actions.disable(program);
+      cozyLight.exit();
+    });
 
   program
     .command('install-distro [distro]')
     .description(
     'Install given distro. If none is give, it displays the distro list')
-    .action(actions.installDistro);
+    .action(function(){
+      actions.installDistro(program, cozyLight.exit);
+    });
 
 
 // Provides user help
@@ -116,7 +135,7 @@ if (cluster.isMaster) {
   cluster.fork();
 
   cluster.on('disconnect', function(worker) {
-    console.error('worker '  + (worker.suicide ? 'suicide!' : 'disconnect!') );
+    console.log('worker '  + (worker.suicide ? 'suicide!' : 'disconnect!') );
 
     if (worker.suicide) {
       // restart only if bug occurred 10 sec ago and more
@@ -142,7 +161,7 @@ if (cluster.isMaster) {
       }
     } else {
       setTimeout(function(){
-        console.error('See you soon !');
+        console.log('See you soon !');
       }, 500);
     }
   });
@@ -160,8 +179,7 @@ if (cluster.isMaster) {
 
     try {
       d.run(function(){
-        cozyLight.stop(function(err){
-          //cozyLight.exit(err);
+        cozyLight.stop(function (){
           cluster.worker.kill();
         });
       });

@@ -179,9 +179,17 @@ describe('Functional tests', function () {
       done();
     });
 
-    it('restart cozy-light.', function (done) {
+    it('installs a plugin.', function (done) {
       this.timeout(5000);
-      actions.restart({}, done);
+      var testapp = pathExtra.join(fixturesDir, 'test-plugin2');
+      actions.installPlugin(testapp, function (err) {
+        assert.equal(err, null, 'Cannot install ' + testapp + '.');
+        done();
+      });
+    });
+
+    it('wait cozy-light restarted.', function (done) {
+      setTimeout(done, 1000);
     });
 
     it('fake app should be started.', function (done) {
@@ -200,6 +208,17 @@ describe('Functional tests', function () {
           'Wrong return code for test app.');
         body.ok.should.eql(false,
           'Wrong reloaded response body for test app.');
+        done();
+      });
+    });
+
+    it('plugin always re configure main app.', function (done) {
+      var client = requestJSON.newClient('http://localhost:8090');
+      client.get('/test-url', function assertResponse (err, res, body) {
+        console.error(err)
+        console.error(body)
+        body.ok.should.eql(true,
+          'Plugin must reconfigure main app server afer restart.');
         done();
       });
     });
