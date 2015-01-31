@@ -9,104 +9,168 @@ var actions = cozyLight.actions;
 
 var pkg = require('../package.json');
 
+var runProgram = function() {
 
 // Configure CLI
 
-program
-  .version(pkg.version);
+  program
+    .version(pkg.version);
 
-program
-  .option('-h, --home <home>',
-  'home directory where Cozy Light runs (default: ~/.cozy-light)');
+  program
+    .option('-h, --home <home>',
+    'home directory where Cozy Light runs (default: ~/.cozy-light)');
 
 // trigger parse of home option.
-program.parse(process.argv);
+  program.parse(process.argv);
 
 // Init cozy light, let plugins add their own options / actions
-cozyLight.init(program);
+  cozyLight.init(program);
 
 // Initialize cozy cli actions
 
-program
-  .command('start')
-  .option('-p, --port <port>', 'port number on which Cozy Light will listen')
-  .description('start Cozy Light server')
-  .action(actions.start);
+  program
+    .command('start')
+    .option('-p, --port <port>', 'port number on which Cozy Light will listen')
+    .description('start Cozy Light server')
+    .action(actions.start);
 
-program
-  .command('install <app>')
-  .description('Add app to current Cozy Light')
-  .action(actions.installApp);
+  program
+    .command('install <app>')
+    .description('Add app to current Cozy Light')
+    .action(actions.installApp);
 
-program
-  .command('uninstall <app>')
-  .description('Remove app from current Cozy Light')
-  .action(actions.uninstallApp);
+  program
+    .command('uninstall <app>')
+    .description('Remove app from current Cozy Light')
+    .action(actions.uninstallApp);
 
-program
-  .command('add-plugin <plugin>')
-  .description('Add plugin to current Cozy Light')
-  .action(actions.installPlugin);
+  program
+    .command('add-plugin <plugin>')
+    .description('Add plugin to current Cozy Light')
+    .action(actions.installPlugin);
 
-program
-  .command('remove-plugin <plugin>')
-  .description('Remove plugin from current Cozy Light')
-  .action(actions.uninstallPlugin);
+  program
+    .command('remove-plugin <plugin>')
+    .description('Remove plugin from current Cozy Light')
+    .action(actions.uninstallPlugin);
 
-program
-  .command('display-config')
-  .description('Display current config of Cozy Light')
-  .action(actions.displayConfig);
+  program
+    .command('display-config')
+    .description('Display current config of Cozy Light')
+    .action(actions.displayConfig);
 
-program
-  .command('enable <apporplugin>')
-  .description('Enable given disabled app or plugin')
-  .action(actions.enable);
+  program
+    .command('enable <apporplugin>')
+    .description('Enable given disabled app or plugin')
+    .action(actions.enable);
 
-program
-  .command('disable <apporplugin>')
-  .description('Disable given app or plugin')
-  .action(actions.disable);
-  
-program
-  .command('install-distro [distro]')
-  .description(
+  program
+    .command('disable <apporplugin>')
+    .description('Disable given app or plugin')
+    .action(actions.disable);
+
+  program
+    .command('install-distro [distro]')
+    .description(
     'Install given distro. If none is give, it displays the distro list')
-  .action(actions.installDistro);
+    .action(actions.installDistro);
 
 
 // Provides user help
-program
-  .command('*')
-  .description('display help')
-  .action(function(){
-    program.outputHelp();
-    cozyLight.stop(cozyLight.exit);
-  });
+  program
+    .command('*')
+    .description('display help')
+    .action(function(){
+      program.outputHelp();
+      cozyLight.stop(cozyLight.exit);
+    });
 
 // Run CLI
 
-program.parse(process.argv);
+  program.parse(process.argv);
 
 // If arguments doesn't match any of the one set, it displays help.
 
-if (!process.argv.slice(2).length) {
-  program.outputHelp();
-}
-
-// Manage errors
-
-process.on('uncaughtException', function(err){
-  if (err) {
-    cozyLight.logger.warn('An exception is uncaught');
-    cozyLight.logger.raw(err);
-    cozyLight.logger.raw(err.stack);
+  if (!process.argv.slice(2).length) {
+    program.outputHelp();
   }
-  cozyLight.stop(cozyLight.exit);
-});
 
 // Manage termination
 
-process.on('SIGINT', function(){
-  cozyLight.stop(cozyLight.exit);
-});
+  process.on('SIGINT', function(){
+    cozyLight.stop(cozyLight.exit);
+  });
+};
+
+// Much better!
+var cluster = require('cluster');
+
+if (cluster.isMaster) {
+  var lastBugTime = new Date();
+  var RestartTimeout;
+// Manage termination
+  process.on('SIGINT', function(){
+    // must bind to prevent automatic garbage
+  });
+
+  cluster.fork();
+
+  cluster.on('disconnect', function(worker) {
+    console.error('worker '  + (worker.suicide ? 'suicide!' : 'disconnect!') );
+
+    if (worker.suicide) {
+      // restart only if bug occurred 10 sec ago and more
+      // it helps to prevent a restart loop that could occurs during init sequence
+      var diff = Math.abs(new Date() - lastBugTime);
+      lastBugTime = new Date();
+
+      if( !RestartTimeout && diff > 5 * 1000 ){
+        RestartTimeout = setTimeout(function(){
+          cluster.fork();
+          RestartTimeout = null;
+        }, 1000);
+      } else {
+        clearTimeout(RestartTimeout);
+        // apply a timeout to ensure this will display at end to of the screen
+        // otherwise both fork and master process speaks at same time
+        setTimeout(function(){
+          console.error('I won\'t restart');
+          console.error('I detected something is going wrong in the startup sequence');
+          console.error('Preventing me to start your system');
+          console.error('Please report this issue');
+        }, 2*1000);
+      }
+    } else {
+      setTimeout(function(){
+        console.error('See you soon !');
+      }, 500);
+    }
+  });
+
+} else {
+
+  var domain = require('domain');
+  var d = domain.create();
+  d.on('error', function(err) {
+    if (err) {
+      cozyLight.logger.error('An exception is uncaught');
+      cozyLight.logger.error(err.stack);
+      cozyLight.logger.error(err.message);
+    }
+
+    try {
+      d.run(function(){
+        cozyLight.stop(function(err){
+          //cozyLight.exit(err);
+          cluster.worker.kill();
+        });
+      });
+    } catch (er2) {
+      // oh well, not much we can do at this point.
+      console.error(er2);
+      console.error(er2.stack);
+    }
+  });
+  d.run(runProgram);
+
+}
