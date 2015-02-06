@@ -92,6 +92,7 @@ var runProgram = function() {
     'Install given distro. If none is give, it displays the distro list')
     .action(function(){
       actions.installDistro(program, cozyLight.exit);
+      cozyLight.exit();
     });
 
 
@@ -101,7 +102,7 @@ var runProgram = function() {
     .description('display help')
     .action(function(){
       program.outputHelp();
-      cozyLight.stop(cozyLight.exit);
+      cozyLight.exit();
     });
 
 // Run CLI
@@ -112,6 +113,7 @@ var runProgram = function() {
 
   if (!process.argv.slice(2).length) {
     program.outputHelp();
+    cozyLight.exit();
   }
 
 // Manage termination
