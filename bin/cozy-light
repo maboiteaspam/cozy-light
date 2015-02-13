@@ -137,9 +137,9 @@ if (cluster.isMaster) {
   cluster.fork();
 
   cluster.on('disconnect', function(worker) {
-    console.log('worker '  + (worker.suicide ? 'suicide!' : 'disconnect!') );
 
     if (worker.suicide) {
+      console.error('worker suicided!');
       // restart only if bug occurred 10 sec ago and more
       // it helps to prevent a restart loop that could occurs during init sequence
       var diff = Math.abs(new Date() - lastBugTime);
@@ -162,9 +162,7 @@ if (cluster.isMaster) {
         }, 2*1000);
       }
     } else {
-      setTimeout(function(){
-        console.log('See you soon !');
-      }, 500);
+      // just quit
     }
   });
 
